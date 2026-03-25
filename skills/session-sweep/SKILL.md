@@ -68,8 +68,8 @@ for wt_dir in ~/.claude/worktrees/*/; do
   git_file="$wt_dir/.git"
   if [[ -f "$git_file" ]]; then
     # Extract: "gitdir: /path/to/repo/.git/worktrees/name" → "/path/to/repo"
-    gitdir=
-    repo_root=
+    gitdir=$(cat "$git_file" | sed 's/^gitdir: //')
+    repo_root=$(echo "$gitdir" | sed 's|/.git/worktrees/.*||')
     REPO_WORKTREES["$repo_root"]+= " $wt_dir"
   fi
 done
