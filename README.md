@@ -18,6 +18,12 @@ This plugin gives you a single command to find and purge all stale session artif
 claude plugin add github:WenyuChiou/session-sweep
 ```
 
+## Prerequisites
+
+- **git** must be installed and available in your PATH. Verify with `git --version`.
+- Claude Code CLI installed (see [claude.ai/code](https://claude.ai/code))
+- macOS, Linux, or Windows (PowerShell required on Windows)
+
 ## Usage
 
 Invoke directly:
@@ -113,11 +119,13 @@ To cancel: "remove the daily session sweep"
 │   ... 79 more stale dirs
 ```
 
+On Windows, this is `C:\Users\<you>\.claude\worktrees\`.
+
 - **83 stale worktrees** across 4 repos
 - **~1.3 GB** wasted in data-pipeline alone; **~2.3 GB** total
 - Git still tracking 6 refs to directories that no longer exist
 
-**After** — session sweep completes in ~8 seconds:
+**After** — session sweep completes (typically under a minute):
 
 ```
 ~/.claude/worktrees/

@@ -147,13 +147,7 @@ Beyond worktrees, Claude Code stores additional session data:
 
 ### Scheduled task artifacts
 
-If you have set up a scheduled session sweep (via Claude's scheduled tasks feature), the task definition is stored in:
-
-```
-~/Documents/Claude/Scheduled/worktree-cleanup/   ← legacy name, may vary
-```
-
-These are small JSON files describing the schedule and are safe to delete if you want to cancel the scheduled task.
+If you have set up a scheduled session sweep, the schedule is managed through Claude Code's built-in scheduled tasks feature. Use Claude Code's task management commands to list or cancel scheduled tasks — there is no separate file path to manage manually.
 
 ---
 

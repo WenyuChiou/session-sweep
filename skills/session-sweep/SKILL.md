@@ -33,6 +33,12 @@ First, detect the OS and scan for Claude Code's worktree storage location. Claud
 find "$HOME" -maxdepth 6 -type d -path "*/.claude/worktrees" 2>/dev/null
 ```
 
+> **Cloud sync check:** Before scanning or deleting, check whether `~/.claude/worktrees/` (or any parent directory) is inside a cloud sync folder (Google Drive, OneDrive, Dropbox, iCloud). Deleting files in sync folders can trigger slow cascading syncs or conflicts. Detect by checking for known sync folder names in the path:
+> ```bash
+> echo "$HOME" | grep -Ei "google.drive|onedrive|dropbox|icloud"
+> ```
+> If detected, warn the user and skip any worktrees inside sync folders.
+
 **Windows (PowerShell):**
 ```powershell
 Get-ChildItem -Path $env:USERPROFILE -Recurse -Depth 6 -Directory -Filter "worktrees" -ErrorAction SilentlyContinue |
@@ -40,6 +46,40 @@ Get-ChildItem -Path $env:USERPROFILE -Recurse -Depth 6 -Directory -Filter "workt
 ```
 
 The depth limit keeps the scan fast (usually under 5 seconds). Each result is a container directory holding multiple `<random-name>/` subdirs, one per past session.
+
+### 1b. Identify Parent Repo for Each Worktree
+
+Each worktree directory contains a `.git` file (not a directory) that points back to the main repository. Read this file to determine which repo owns each worktree, then group worktrees by parent repo.
+
+```bash
+# For each worktree dir found, read its .git pointer to identify the parent repo
+cat ~/.claude/worktrees/<name>/.git
+# Output: gitdir: /home/user/projects/my-app/.git/worktrees/<name>
+# Parent repo = /home/user/projects/my-app
+```
+
+Group all worktrees by parent repo, then run `git worktree list --porcelain` **once per repo** (not once per worktree). This is much faster for systems with many worktrees.
+
+**macOS/Linux — parse parent repo from each worktree’s .git file:**
+```bash
+declare -A REPO_WORKTREES  # map: repo_path → list of worktree names
+
+for wt_dir in ~/.claude/worktrees/*/; do
+  git_file="$wt_dir/.git"
+  if [[ -f "$git_file" ]]; then
+    # Extract: "gitdir: /path/to/repo/.git/worktrees/name" → "/path/to/repo"
+    gitdir=
+    repo_root=
+    REPO_WORKTREES["$repo_root"]+= " $wt_dir"
+  fi
+done
+
+# Now run git worktree list once per repo
+for repo in "${!REPO_WORKTREES[@]}"; do
+  echo "=== $repo ===" 
+  git -C "$repo" worktree list --porcelain
+done
+```
 
 ### 2. Measure Current Disk Usage
 
@@ -88,7 +128,38 @@ prunable gitdir file points to non-existent location  # ← safe to prune
 
 **Note on lock files:** `git worktree lock <path>` writes a marker at `<main-repo>/.git/worktrees/<name>/locked`. Using `git worktree list --porcelain` reads this for you — there is no need to inspect the file path manually.
 
+**Stale lock files:** If a worktree shows as `locked` in `git worktree list --porcelain` but no Claude Code session is currently running (e.g., after a crash or force-kill), the lock is stale. Report these as “suspected stale lock” in the summary. After user confirmation, offer `git worktree unlock <path>` as a recovery option:
+
+```bash
+# Check if a locked worktree has a stale lock
+git worktree list --porcelain | grep -A2 "locked"
+
+# If confirmed stale (no active Claude session):
+git worktree unlock /path/to/worktree
+# Then re-run the sweep to pick it up for deletion
+```
+
+### 3.5. Confirm Before Deleting
+
+**Never proceed to deletion without explicit user confirmation.**
+
+After identifying all stale worktrees, present a preview and ask:
+
+```
+Found 47 stale worktrees (2.1 GB). Proceed with deletion? [y/N]
+```
+
+Include:
+- Total count of stale worktrees to be removed
+- Estimated disk space that will be freed (from Step 2 measurements)
+- Per-repo breakdown if multiple repos are involved
+- Any worktrees that will be skipped (active/locked) and why
+
+Only proceed to Step 4 after receiving explicit confirmation (`y` or `yes`). If the user says no, abort and report what was found without deleting anything.
+
 ### 4. Remove Stale Worktrees
+
+> **Scope:** Step 1 found container directories (e.g., `~/.claude/worktrees/`). In this step you iterate over the **individual subdirectories** within that container (e.g., `~/.claude/worktrees/bold-turing/`, `~/.claude/worktrees/calm-hopper/`). Never delete the container directory itself — only the individual `<name>/` subdirectories identified as stale in Step 3.
 
 > **Warning:** `git worktree remove --force` silently discards any uncommitted changes in the worktree. Confirm with the user before proceeding if they may have in-progress work in a stale worktree.
 
@@ -103,16 +174,19 @@ macOS/Linux — **always validate the path contains `.claude/worktrees/` before 
 ```bash
 WORKTREE_PATH="/path/to/.claude/worktrees/stale-name"
 
+# Normalize the path to prevent traversal attacks (e.g., /.claude/worktrees/../../../etc)
+SAFE_PATH=$(realpath --canonicalize-missing "$WORKTREE_PATH")
+
 # Safety check: only delete paths that are confirmed worktree containers
-if [[ "$WORKTREE_PATH" == *"/.claude/worktrees/"* ]]; then
-  rm -rf "$WORKTREE_PATH"
+if [[ "$SAFE_PATH" == *"/.claude/worktrees/"* ]]; then
+  rm -rf "$SAFE_PATH"
 else
-  echo "SKIP: path does not look like a Claude worktree: $WORKTREE_PATH"
+  echo "SKIP: path does not look like a Claude worktree: $SAFE_PATH (resolved from $WORKTREE_PATH)"
 fi
 
 # After removing all stale dirs, clean up git's internal refs
 cd /path/to/parent-repo
-git worktree prune
+git worktree prune --expire=now
 ```
 
 Windows:
@@ -130,7 +204,7 @@ if ($path -match '\\\.claude\\worktrees\\') {
 
 # Clean up git refs
 cd C:\path\to\parent-repo
-git worktree prune
+git worktree prune --expire=now
 ```
 
 ### 5. Report Results
@@ -164,7 +238,6 @@ The before/after comparison is the most valuable part. Always report both count 
 
 **Permission denied:** Some worktrees may be locked by running processes. Skip them and note it in the report — do not let one error stop the whole sweep.
 
-**Cloud sync folders:** Skip any worktrees found inside Google Drive, OneDrive, Dropbox, or iCloud folders. Deleting files in sync folders can cause slow cascading syncs or conflicts. Detect them by checking for known sync folder names in the path before deleting.
 
 ## Prevent Future Accumulation
 

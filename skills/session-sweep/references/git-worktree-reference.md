@@ -13,6 +13,12 @@ $ git worktree list
 /home/user/.claude/worktrees/calm-hopper  ghi9012 (detached HEAD)
 ```
 
+On Windows, paths use backslashes and drive letters:
+```
+C:\Users\you\projects\my-app           abc1234 [main]
+C:\Users\you\.claude\worktrees\bold-turing   def5678 [claude/fix-auth]
+```
+
 Columns: absolute path, HEAD commit (short SHA), branch name (or `detached HEAD`).
 
 The **first entry is always the main working tree** — never remove it.
@@ -89,6 +95,12 @@ git worktree prune
 | `--dry-run` | Show what would be pruned without deleting anything |
 | `--verbose` | Print each entry being pruned |
 | `--expire <time>` | Only prune entries older than `<time>` (e.g., `--expire=now` prunes everything prunable, `--expire=2.weeks.ago` is the default) |
+
+> **Important:** The default `--expire` is `2.weeks.ago`, which means refs for recently-deleted worktrees will **not** be cleaned up immediately. Always use `--expire=now` when you want immediate cleanup:
+> ```bash
+> git worktree prune --expire=now
+> ```
+> Without this flag, orphaned `.git/worktrees/<name>/` entries can persist for up to two weeks, causing `git worktree list` to show stale entries.
 
 **What it does NOT do:** It does not delete worktree directories from disk. It only removes stale entries from `.git/worktrees/`. You must delete the directories first (or they were already gone), then run `prune` to clean up git's tracking data.
 
