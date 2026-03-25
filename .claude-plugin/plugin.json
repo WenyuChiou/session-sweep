@@ -1,12 +1,12 @@
 {
-  "name": "worktree-cleanup",
-  "description": "Automatically discover and clean up stale git worktrees to reclaim disk space. Essential for heavy Claude Code users — each code task creates a full repo copy that persists after the session ends.",
-  "version": "1.0.0",
+  "name": "session-sweep",
+  "description": "Sweep up all session artifacts left behind by Claude Code: stale git worktrees, dangling git refs, and orphaned worktree directories. Essential for heavy Claude Code users — each code task creates a full repo copy that persists after the session ends.",
+  "version": "1.1.0",
   "author": {
     "name": "Wen-Yu Chiou",
     "email": "wenyuchiou1234@gmail.com"
   },
   "category": "utilities",
-  "keywords": ["cleanup", "worktree", "disk-space", "maintenance", "git", "performance"],
-  "skills": ["./skills/worktree-cleanup"]
+  "keywords": ["session-sweep", "cleanup", "worktree", "disk-space", "maintenance", "git", "performance", "session-artifacts"],
+  "skills": ["./skills/session-sweep"]
 }
