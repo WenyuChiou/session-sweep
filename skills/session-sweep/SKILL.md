@@ -171,3 +171,10 @@ The before/after comparison is the most valuable part. Always report both count 
 After cleanup, suggest setting up automatic daily maintenance:
 
 > Tip: You can create a scheduled task in Claude to run session-sweep daily at a quiet time (e.g., 3 AM). This prevents buildup and keeps your disk free without any manual effort. Just say "schedule a daily session sweep."
+
+## References
+
+For deeper context on the underlying mechanisms, see:
+
+- `references/git-worktree-reference.md` — Git worktree command reference and internals: all `git worktree` subcommands, flags, the `.git/worktrees/<name>/` directory structure, and common error messages
+- `references/session-artifacts.md` — How Claude Code creates and manages session files: worktree storage locations, the adjective-scientist naming convention, lock file mechanics, what `git worktree prune` cleans vs. what needs manual deletion, and other artifacts under `~/.claude/`
