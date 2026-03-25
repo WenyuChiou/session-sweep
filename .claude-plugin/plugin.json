@@ -1,0 +1,12 @@
+{
+  "name": "worktree-cleanup",
+  "description": "Automatically discover and clean up stale git worktrees to reclaim disk space. Essential for heavy Claude Code users — each code task creates a full repo copy that persists after the session ends.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Wen-Yu Chiou",
+    "email": "wenyuchiou1234@gmail.com"
+  },
+  "category": "utilities",
+  "keywords": ["cleanup", "worktree", "disk-space", "maintenance", "git", "performance"],
+  "skills": ["./skills/worktree-cleanup"]
+}
